@@ -37,7 +37,7 @@ class pscoverdl_gui(ctk.CTk):
         )
         icon_photo = ImageTk.PhotoImage(Image.open(icon_path))
         self.wm_iconphoto(True, icon_photo)
-        self.geometry("450x350")
+        self.geometry("450x400")
         self.resizable(False, False)
         self.font = ("MS Sans Serif", 12, "bold")
         self.grid_rowconfigure(0, weight=1)
@@ -166,6 +166,14 @@ class pscoverdl_gui(ctk.CTk):
         self.duckstation_use_ssl_checkbox.grid(
             row=5, column=0, padx=10, pady=10, sticky="w"
         )
+        
+        self.duckstation_fallback_checkbox = ctk.CTkCheckBox(
+            self.duckstation_frame, text="Fallback to default if 3D cover not found"
+        )
+        self.duckstation_fallback_checkbox.grid(
+            row=6, column=0, columnspan=2, padx=10, pady=10, sticky="w"
+        )
+
 
         # duckstation download button
         self.start_download_button = ctk.CTkButton(
@@ -173,7 +181,7 @@ class pscoverdl_gui(ctk.CTk):
             text="Start Download",
             command=lambda: self.start_download("duckstation"),
         )
-        self.start_download_button.grid(row=6, column=0, padx=10, pady=10, sticky="w")
+        self.start_download_button.grid(row=7, column=0, padx=10, pady=10, sticky="w")
 
         # endregion
 
@@ -241,6 +249,12 @@ class pscoverdl_gui(ctk.CTk):
         # pcsx2 use_ssl button
         self.pcsx2_use_ssl_checkbox = ctk.CTkCheckBox(self.pcsx2_frame, text="Use SSL")
         self.pcsx2_use_ssl_checkbox.grid(row=5, column=0, padx=10, pady=10, sticky="w")
+        
+        self.pcsx2_fallback_checkbox = ctk.CTkCheckBox(
+        self.pcsx2_frame, text="Fallback to default if 3D cover not found"
+        )
+        self.pcsx2_fallback_checkbox.grid(row=6, column=0, columnspan=2, padx=10, pady=10, sticky="w")
+
 
         # pcsx2 download button
         self.start_download_button = ctk.CTkButton(
@@ -248,7 +262,7 @@ class pscoverdl_gui(ctk.CTk):
             text="Start Download",
             command=lambda: self.start_download("pcsx2"),
         )
-        self.start_download_button.grid(row=6, column=0, padx=10, pady=10, sticky="w")
+        self.start_download_button.grid(row=7, column=0, padx=10, pady=10, sticky="w")
 
         # endregion
 
@@ -311,11 +325,13 @@ class pscoverdl_gui(ctk.CTk):
                 duckstation_game_cache = config.get("Duckstation", "game_cache")
                 duckstation_cover_type = config.getint("Duckstation", "cover_type")
                 duckstation_use_ssl = config.getboolean("Duckstation", "use_ssl")
+                duckstation_fallback = config.getboolean("Duckstation", "fallback")
 
                 pcsx2_covers_dir = config.get("PCSX2", "cover_directory")
                 pcsx2_game_cache = config.get("PCSX2", "game_cache")
                 pcsx2_cover_type = config.getint("PCSX2", "cover_type")
                 pcsx2_use_ssl = config.getboolean("PCSX2", "use_ssl")
+                pcsx2_fallback = config.getboolean("PCSX2", "fallback")
 
                 self.duckstation_covers_directory_textbox.insert(
                     0, duckstation_covers_dir
@@ -341,6 +357,7 @@ class pscoverdl_gui(ctk.CTk):
             "game_cache": self.duckstation_gamecache_textbox.get(),
             "cover_type": str(self.duckstation_cover_type_var.get()),
             "use_ssl": str(self.duckstation_use_ssl_checkbox.get()),
+            "fallback": str(self.duckstation_fallback_checkbox.get())
         }
 
         config["PCSX2"] = {
@@ -348,6 +365,7 @@ class pscoverdl_gui(ctk.CTk):
             "game_cache": self.pcsx2_gamecache_textbox.get(),
             "cover_type": str(self.pcsx2_cover_type_var.get()),
             "use_ssl": str(self.pcsx2_use_ssl_checkbox.get()),
+            "fallback": str(self.pcsx2_fallback_checkbox.get())
         }
 
         with open("pscoverdl.ini", "w") as configfile:
@@ -363,6 +381,7 @@ class pscoverdl_gui(ctk.CTk):
                 self.pcsx2_cover_type_var.get(),
                 self.pcsx2_use_ssl_checkbox.get(),
                 emulator,
+                self.pcsx2_fallback_checkbox.get()
             )
         elif emulator == "duckstation":
             pscoverdl.download_covers(
@@ -371,6 +390,7 @@ class pscoverdl_gui(ctk.CTk):
                 self.duckstation_cover_type_var.get(),
                 self.duckstation_use_ssl_checkbox.get(),
                 emulator,
+                self.duckstation_fallback_checkbox.get()
             )
 
         self.save_configurations()
