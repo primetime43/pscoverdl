@@ -145,6 +145,7 @@ class pscoverdl_gui(ctk.CTk):
             text="Default",
             variable=self.duckstation_cover_type_var,
             value=0,
+            command=self.update_duckstation_fallback_state
         )
         self.duckstation_radio_button_1.grid(
             row=3, column=0, pady=10, padx=20, sticky="w"
@@ -155,6 +156,7 @@ class pscoverdl_gui(ctk.CTk):
             text="3D",
             variable=self.duckstation_cover_type_var,
             value=1,
+            command=self.update_duckstation_fallback_state
         )
         self.duckstation_radio_button_2.grid(
             row=4, column=0, pady=10, padx=20, sticky="w"
@@ -170,6 +172,7 @@ class pscoverdl_gui(ctk.CTk):
         self.duckstation_fallback_checkbox = ctk.CTkCheckBox(
             self.duckstation_frame, text="Fallback to default if 3D cover not found"
         )
+        self.duckstation_fallback_checkbox.configure(state="disabled")
         self.duckstation_fallback_checkbox.grid(
             row=6, column=0, columnspan=2, padx=10, pady=10, sticky="w"
         )
@@ -235,6 +238,7 @@ class pscoverdl_gui(ctk.CTk):
             text="Default",
             variable=self.pcsx2_cover_type_var,
             value=0,
+            command=self.update_pcsx2_fallback_state
         )
         self.pcsx2_radio_button_1.grid(row=3, column=0, pady=10, padx=20, sticky="w")
 
@@ -243,6 +247,7 @@ class pscoverdl_gui(ctk.CTk):
             text="3D",
             variable=self.pcsx2_cover_type_var,
             value=1,
+            command=self.update_pcsx2_fallback_state
         )
         self.pcsx2_radio_button_2.grid(row=4, column=0, pady=10, padx=20, sticky="w")
 
@@ -253,6 +258,7 @@ class pscoverdl_gui(ctk.CTk):
         self.pcsx2_fallback_checkbox = ctk.CTkCheckBox(
         self.pcsx2_frame, text="Fallback to default if 3D cover not found"
         )
+        self.pcsx2_fallback_checkbox.configure(state="disabled")
         self.pcsx2_fallback_checkbox.grid(row=6, column=0, columnspan=2, padx=10, pady=10, sticky="w")
 
 
@@ -338,14 +344,30 @@ class pscoverdl_gui(ctk.CTk):
                 )
                 self.duckstation_gamecache_textbox.insert(0, duckstation_game_cache)
                 self.duckstation_cover_type_var.set(duckstation_cover_type)
+
                 if duckstation_use_ssl:
                     self.duckstation_use_ssl_checkbox.select()
+                
+                if duckstation_fallback:
+                    self.duckstation_fallback_checkbox.select()
+                else:
+                    self.duckstation_fallback_checkbox.deselect()
+                    
+                self.update_duckstation_fallback_state()
 
                 self.pcsx2_covers_directory_textbox.insert(0, pcsx2_covers_dir)
                 self.pcsx2_gamecache_textbox.insert(0, pcsx2_game_cache)
                 self.pcsx2_cover_type_var.set(pcsx2_cover_type)
+                
                 if pcsx2_use_ssl:
                     self.pcsx2_use_ssl_checkbox.select()
+                    
+                if pcsx2_fallback:
+                    self.pcsx2_fallback_checkbox.select()
+                else:
+                    self.pcsx2_fallback_checkbox.deselect()
+                    
+                self.update_pcsx2_fallback_state()
             except:
                 print("A problem occurred while trying to read pscoverdl.ini")
 
@@ -413,7 +435,20 @@ class pscoverdl_gui(ctk.CTk):
         self.title(
             f"PSCoverDL - {version}{' | NEW VERSION AVAILABLE' if version != rep_version else ''}"
         )
-
+    
+    def update_duckstation_fallback_state(self):
+        if self.duckstation_cover_type_var.get() == 1:  # 1 = 3D
+            self.duckstation_fallback_checkbox.configure(state="normal")
+        else:
+            self.duckstation_fallback_checkbox.configure(state="disabled")
+            self.duckstation_fallback_checkbox.deselect()
+            
+    def update_pcsx2_fallback_state(self):
+        if self.pcsx2_cover_type_var.get() == 1:  # 1 = 3D
+            self.pcsx2_fallback_checkbox.configure(state="normal")
+        else:
+            self.pcsx2_fallback_checkbox.configure(state="disabled")
+            self.pcsx2_fallback_checkbox.deselect()
 
 if __name__ == "__main__":
     app = pscoverdl_gui()
