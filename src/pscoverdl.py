@@ -141,7 +141,8 @@ class BaseCoverDownloader:
                     if self.cover_type == 1 and self.fallback:
                         # Attempt to fallback to the default cover
                         fallback_url = f"{covers_url_default}/{game_serial}.jpg"
-                        if self.download_cover(fallback_url, cover_path):
+                        fallback_cover_path = self.cover_dir.joinpath(f"{game_serial}.jpg")
+                        if self.download_cover(fallback_url, fallback_cover_path):
                             tqdm.write(colored(f"{game_serial} | {game_name} (fallback)", "green"))
                         else:
                             tqdm.write(
