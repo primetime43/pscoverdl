@@ -25,7 +25,7 @@ import configparser
 import pscoverdl
 import requests
 
-VERSION = 1.1
+VERSION = 1.2
 
 
 class pscoverdl_gui(ctk.CTk):
@@ -421,7 +421,7 @@ class pscoverdl_gui(ctk.CTk):
     def check_updates(self, version: str):
         try:
             rep_version = requests.get(
-                "https://github.com/xlenore/pscoverdl/raw/main/VERSION"
+                "https://github.com/primetime43/pscoverdl/raw/main/VERSION"
             ).text.strip()
 
             try:
