@@ -25,7 +25,7 @@ import configparser
 import pscoverdl
 import requests
 
-VERSION = 1.2
+VERSION = 1.3
 
 
 class pscoverdl_gui(ctk.CTk):
