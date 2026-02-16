@@ -25,6 +25,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -35,8 +36,7 @@ jobs:
       - name: Build executable
         working-directory: src
         run: |
-          pyinstaller "gui.py" --onefile --clean --distpath "dist" --icon="app/icon.ico" --add-data="resources;resources" --add-data="icons;icons" --add-data="app;app"
-          mv dist/gui.exe dist/pscoverdl.exe
+          pyinstaller "gui.py" --onefile --clean --name pscoverdl --distpath "dist" --icon="app/icon.ico" --add-data="resources;resources" --add-data="icons;icons" --add-data="app;app"
 
       - name: Determine version tag
         id: version
