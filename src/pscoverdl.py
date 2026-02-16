@@ -55,12 +55,11 @@ class BaseCoverDownloader:
             return serial_list
 
     def existing_covers(self):
-        covers = [
-            filename.stem
-            for filename in self.cover_dir.glob("*.jpg")
-            if filename.suffix in [".jpg", ".png"]
-        ]
-        return covers
+        covers = set()
+        for pattern in ("*.jpg", "*.png"):
+            for filename in self.cover_dir.glob(pattern):
+                covers.add(filename.stem)
+        return list(covers)
 
     def serial_to_name(self, name_list, game_serial):
         return name_list.get(game_serial)
@@ -124,6 +123,7 @@ class BaseCoverDownloader:
                 cover_path = self.cover_dir.joinpath(Path(url).name)
                 results.append(executor.submit(self.download_cover, url, cover_path))
 
+            failed = []
             for result, url in tqdm(
                 zip(results, cover_urls),
                 total=len(cover_urls),
@@ -138,24 +138,46 @@ class BaseCoverDownloader:
                 if result.result():
                     tqdm.write(colored(f"{game_serial} | {game_name}", "green"))
                 else:
-                    if self.cover_type == 1 and self.fallback:
-                        # Attempt to fallback to the default cover
-                        fallback_url = f"{covers_url_default}/{game_serial}.jpg"
-                        fallback_cover_path = self.cover_dir.joinpath(f"{game_serial}.jpg")
-                        if self.download_cover(fallback_url, fallback_cover_path):
-                            tqdm.write(colored(f"{game_serial} | {game_name} (fallback)", "green"))
-                        else:
-                            tqdm.write(
-                                colored(
-                                    f"[{game_serial} | {game_name}] not found. Skipping...", "yellow"
-                                )
-                            )
+                    failed.append((game_serial, game_name))
+
+        if failed and self.fallback:
+            if self.cover_type == 1:
+                fallback_url_base = covers_url_default
+                fallback_ext = ".jpg"
+            else:
+                fallback_url_base = covers_url_3d
+                fallback_ext = ".png"
+
+            fallback_urls = [
+                f"{fallback_url_base}/{serial}{fallback_ext}"
+                for serial, _ in failed
+            ]
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as fallback_executor:
+                fallback_results = []
+                for fb_url in fallback_urls:
+                    cover_path = self.cover_dir.joinpath(Path(fb_url).name)
+                    fallback_results.append(fallback_executor.submit(self.download_cover, fb_url, cover_path))
+
+                for fb_result, (serial, name) in tqdm(
+                    zip(fallback_results, failed),
+                    total=len(failed),
+                    desc="Downloading fallbacks",
+                    unit="cover",
+                    ncols=50,
+                    bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}",
+                ):
+                    if fb_result.result():
+                        tqdm.write(colored(f"{serial} | {name} (fallback)", "green"))
                     else:
                         tqdm.write(
                             colored(
-                                f"[{game_serial} | {game_name}] not found. Skipping...", "yellow"
+                                f"[{serial} | {name}] not found. Skipping...", "yellow"
                             )
                         )
+        elif failed:
+            for serial, name in failed:
+                print(colored(f"[{serial} | {name}] not found. Skipping...", "yellow"))
 
 
 class PCSX2CoverDownloader(BaseCoverDownloader):
