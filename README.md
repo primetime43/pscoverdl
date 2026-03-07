@@ -1,4 +1,4 @@
-<img width="1124" height="980" alt="image" src="https://github.com/user-attachments/assets/65219b19-ce16-4662-887e-44a5d3274cbd" /># PSCoverDL
+PSCoverDL
 
 ![image](https://github.com/xlenore/pscoverdl/assets/57191159/4c4b3042-85e4-45b5-8f1b-48a6f00a93ea)
 
