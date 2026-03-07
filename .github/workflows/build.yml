@@ -189,11 +189,63 @@ jobs:
           path: dist/pscoverdl-macos.zip
           if-no-files-found: error
 
-      - name: Upload artifact (Windows / Linux)
-        if: matrix.os != 'macos-latest'
+      - name: Zip artifact (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/pscoverdl/* -DestinationPath dist/pscoverdl-windows.zip
+
+      - name: Tar artifact (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          cd dist
+          tar -czf pscoverdl-linux.tar.gz pscoverdl/
+
+      - name: Upload artifact (Windows)
+        if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: dist/pscoverdl/
+          path: dist/pscoverdl-windows.zip
           if-no-files-found: error
 
+      - name: Upload artifact (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/pscoverdl-linux.tar.gz
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------------
+  # Release job — runs only on version tags, after all builds succeed.
+  # Downloads the built artifacts and attaches them to a GitHub Release.
+  # -------------------------------------------------------------------------
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: List downloaded artifacts
+        run: find artifacts/ -type f
+
+      - name: Create release and upload files
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PSCoverDL ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/pscoverdl-macos/pscoverdl-macos.zip
+            artifacts/pscoverdl-windows/pscoverdl-windows.zip
+            artifacts/pscoverdl-linux/pscoverdl-linux.tar.gz
