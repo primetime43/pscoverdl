@@ -1,0 +1,105 @@
+name: Build PSCoverDL
+
+on:
+  push:
+    tags:
+      - "v*"          # trigger on version tags, e.g. v1.2
+  workflow_dispatch:  # allow manual runs from the Actions tab
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+            artifact: pscoverdl-windows
+            build_cmd: |
+              $CTK_PATH = python -c "import customtkinter, os; print(os.path.dirname(customtkinter.__file__))"
+              pyinstaller `
+                --noconfirm `
+                --onedir `
+                --windowed `
+                --name pscoverdl `
+                --add-data "$CTK_PATH;customtkinter" `
+                --add-data "src/resources;resources" `
+                --add-data "src/icons;icons" `
+                --add-data "src/app;app" `
+                src/gui.py
+
+          - os: macos-latest
+            name: macOS
+            artifact: pscoverdl-macos
+            build_cmd: |
+              CTK_PATH=$(python3 -c "import customtkinter, os; print(os.path.dirname(customtkinter.__file__))")
+              pyinstaller \
+                --noconfirm \
+                --onedir \
+                --windowed \
+                --name pscoverdl \
+                --add-data "$CTK_PATH:customtkinter" \
+                --add-data "src/resources:resources" \
+                --add-data "src/icons:icons" \
+                --add-data "src/app:app" \
+                src/gui.py
+
+          - os: ubuntu-latest
+            name: Linux
+            artifact: pscoverdl-linux
+            build_cmd: |
+              CTK_PATH=$(python3 -c "import customtkinter, os; print(os.path.dirname(customtkinter.__file__))")
+              pyinstaller \
+                --noconfirm \
+                --onedir \
+                --windowed \
+                --name pscoverdl \
+                --add-data "$CTK_PATH:customtkinter" \
+                --add-data "src/resources:resources" \
+                --add-data "src/icons:icons" \
+                --add-data "src/app:app" \
+                src/gui.py
+
+    runs-on: ${{ matrix.os }}
+    name: Build on ${{ matrix.name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Linux only: install Tkinter system dependency.
+      # Tkinter is not bundled with the GitHub Actions Python on Ubuntu.
+      # -----------------------------------------------------------------------
+      - name: Install Tkinter (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y python3-tk
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build with PyInstaller (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: ${{ matrix.build_cmd }}
+
+      - name: Build with PyInstaller (macOS / Linux)
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: ${{ matrix.build_cmd }}
+
+      # -----------------------------------------------------------------------
+      # Upload the entire dist/pscoverdl/ folder as a zip artifact.
+      # On macOS, dist/ also contains pscoverdl.app — include that too.
+      # -----------------------------------------------------------------------
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/pscoverdl*/   # matches both pscoverdl/ and pscoverdl.app
+          if-no-files-found: error
