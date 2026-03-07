@@ -7,6 +7,7 @@ from termcolor import colored
 from tqdm import tqdm
 from pathlib import Path
 import requests
+import certifi
 
 PS1_COVERS_URL_DEFAULT = (
     "https://raw.githubusercontent.com/xlenore/psx-covers/main/covers/default"
@@ -70,7 +71,7 @@ class BaseCoverDownloader:
         try:
             if not self.use_ssl:
                 url = url.replace("https://", "http://")
-            response = requests.get(url)
+            response = requests.get(url, verify=certifi.where())
             if response.status_code == 200:
                 with open(cover_path, "wb") as file:
                     file.write(response.content)

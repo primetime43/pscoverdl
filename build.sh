@@ -1,59 +1,149 @@
-#!/usr/bin/env bash
-# ---------------------------------------------------------------------------
-# build.sh — PSCoverDL build script for macOS and Linux
-#
-# Produces a self-contained app in dist/pscoverdl/
-#
-# Usage:
-#   chmod +x build.sh
-#   ./build.sh
-# ---------------------------------------------------------------------------
+name: Build PSCoverDL
 
-set -euo pipefail
+on:
+  push:
+    tags:
+      - "v*"          # trigger on version tags, e.g. v1.2
+  workflow_dispatch:  # allow manual runs from the Actions tab
 
-# Resolve the directory this script lives in (repo root)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC_DIR="$SCRIPT_DIR/src"
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+            artifact: pscoverdl-windows
 
-echo "[build] Detecting platform..."
-PLATFORM="$(uname -s)"
-case "$PLATFORM" in
-    Darwin) echo "[build] macOS detected" ;;
-    Linux)  echo "[build] Linux detected" ;;
-    *)      echo "[build] Unsupported platform: $PLATFORM"; exit 1 ;;
-esac
+          - os: macos-latest
+            name: macOS
+            artifact: pscoverdl-macos
 
-# ---------------------------------------------------------------------------
-# Locate the customtkinter package directory so PyInstaller can bundle it.
-# PyInstaller does not auto-include customtkinter's data files (.json, .otf).
-# ---------------------------------------------------------------------------
-CTK_PATH="$(python3 -c "import customtkinter; import os; print(os.path.dirname(customtkinter.__file__))")"
-echo "[build] customtkinter found at: $CTK_PATH"
+          - os: ubuntu-latest
+            name: Linux
+            artifact: pscoverdl-linux
 
-# ---------------------------------------------------------------------------
-# Run PyInstaller
-#   --noconfirm          overwrite previous dist/ without prompting
-#   --onedir             required by customtkinter (has bundled data files)
-#   --windowed           no terminal window on launch (macOS: produces .app)
-#   --name               output name
-#   --add-data           bundle customtkinter data files (separator is : on Unix)
-#   --add-data           bundle app resources (icons, game databases)
-# ---------------------------------------------------------------------------
-pyinstaller \
-    --noconfirm \
-    --onedir \
-    --windowed \
-    --name "pscoverdl" \
-    --add-data "$CTK_PATH:customtkinter" \
-    --add-data "$SRC_DIR/resources:resources" \
-    --add-data "$SRC_DIR/icons:icons" \
-    --add-data "$SRC_DIR/app:app" \
-    "$SRC_DIR/gui.py"
+    runs-on: ${{ matrix.os }}
+    name: Build on ${{ matrix.name }}
 
-echo ""
-echo "[build] Done. Output is in: $SCRIPT_DIR/dist/pscoverdl/"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-# On macOS PyInstaller also produces a .app bundle inside dist/
-if [ "$PLATFORM" = "Darwin" ]; then
-    echo "[build] macOS .app bundle: $SCRIPT_DIR/dist/pscoverdl.app"
-fi
+      # -----------------------------------------------------------------------
+      # Linux only: install Tkinter system dependency.
+      # Tkinter is not bundled with the GitHub Actions Python on Ubuntu.
+      # -----------------------------------------------------------------------
+      - name: Install Tkinter (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y python3-tk
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller certifi
+
+      # -----------------------------------------------------------------------
+      # macOS only: convert icon.png → icon.icns for proper Finder/Dock icon.
+      # Uses macOS's built-in iconutil — no extra dependencies needed.
+      # -----------------------------------------------------------------------
+      - name: Generate .icns icon (macOS only)
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p src/app/icon.iconset
+          python3 - <<'EOF'
+          from PIL import Image
+          import os
+          src = "src/app/icon.png"
+          sizes = [16, 32, 64, 128, 256, 512]
+          for s in sizes:
+              img = Image.open(src).resize((s, s), Image.LANCZOS)
+              img.save(f"src/app/icon.iconset/icon_{s}x{s}.png")
+              img2 = Image.open(src).resize((s*2, s*2), Image.LANCZOS)
+              img2.save(f"src/app/icon.iconset/icon_{s}x{s}@2x.png")
+          EOF
+          iconutil -c icns src/app/icon.iconset -o src/app/icon.icns
+
+      # -----------------------------------------------------------------------
+      # Windows build
+      # -----------------------------------------------------------------------
+      - name: Build with PyInstaller (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $CTK_PATH = python -c "import customtkinter, os; print(os.path.dirname(customtkinter.__file__))"
+          pyinstaller `
+            --noconfirm `
+            --onedir `
+            --windowed `
+            --name pscoverdl `
+            --add-data "$CTK_PATH;customtkinter" `
+            --add-data "src/resources;resources" `
+            --add-data "src/icons;icons" `
+            --add-data "src/app;app" `
+            src/gui.py
+
+      # -----------------------------------------------------------------------
+      # macOS build — uses .icns for dock/Finder icon, uploads only the .app
+      # -----------------------------------------------------------------------
+      - name: Build with PyInstaller (macOS)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          CTK_PATH=$(python3 -c "import customtkinter, os; print(os.path.dirname(customtkinter.__file__))")
+          pyinstaller \
+            --noconfirm \
+            --onedir \
+            --windowed \
+            --name pscoverdl \
+            --icon src/app/icon.icns \
+            --add-data "$CTK_PATH:customtkinter" \
+            --add-data "src/resources:resources" \
+            --add-data "src/icons:icons" \
+            --add-data "src/app:app" \
+            src/gui.py
+
+      # -----------------------------------------------------------------------
+      # Linux build
+      # -----------------------------------------------------------------------
+      - name: Build with PyInstaller (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          CTK_PATH=$(python3 -c "import customtkinter, os; print(os.path.dirname(customtkinter.__file__))")
+          pyinstaller \
+            --noconfirm \
+            --onedir \
+            --windowed \
+            --name pscoverdl \
+            --add-data "$CTK_PATH:customtkinter" \
+            --add-data "src/resources:resources" \
+            --add-data "src/icons:icons" \
+            --add-data "src/app:app" \
+            src/gui.py
+
+      # -----------------------------------------------------------------------
+      # Upload artifacts.
+      # macOS: only the .app bundle — users drag this to /Applications.
+      # Windows/Linux: the full onedir folder.
+      # -----------------------------------------------------------------------
+      - name: Upload artifact (macOS — .app only)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/pscoverdl.app
+          if-no-files-found: error
+
+      - name: Upload artifact (Windows / Linux)
+        if: matrix.os != 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/pscoverdl/
+          if-no-files-found: error
+

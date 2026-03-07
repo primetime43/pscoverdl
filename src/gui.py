@@ -27,6 +27,7 @@ from PIL import Image, ImageTk
 import configparser
 import pscoverdl
 import requests
+import certifi
 
 VERSION = 1.1
 
@@ -460,6 +461,7 @@ class pscoverdl_gui(ctk.CTk):
                 rep_version_str = requests.get(
                     "https://github.com/xlenore/pscoverdl/raw/main/VERSION",
                     timeout=5,
+                    verify=certifi.where(),
                 ).text.strip()
                 try:
                     rep_version = float(rep_version_str)
