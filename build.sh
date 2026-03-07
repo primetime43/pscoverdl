@@ -101,11 +101,53 @@ jobs:
             --windowed \
             --name pscoverdl \
             --icon src/app/icon.icns \
+            --osx-bundle-identifier com.pscoverdl.app \
             --add-data "$CTK_PATH:customtkinter" \
             --add-data "src/resources:resources" \
             --add-data "src/icons:icons" \
             --add-data "src/app:app" \
             src/gui.py
+
+      - name: List dist output (macOS debug)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: find dist/ -maxdepth 3 -print
+
+      # PyInstaller should produce pscoverdl.app automatically with --windowed
+      # on macOS. If it doesn't (headless CI quirk), wrap the onedir manually.
+      - name: Ensure .app bundle exists (macOS)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          if [ ! -d "dist/pscoverdl.app" ]; then
+            echo ".app not found — wrapping onedir into .app bundle manually"
+            APP="dist/pscoverdl.app/Contents/MacOS"
+            mkdir -p "$APP"
+            cp -r dist/pscoverdl/* "$APP/"
+            # Minimal Info.plist so macOS recognises it as an app
+            cat > dist/pscoverdl.app/Contents/Info.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+            "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>
+            <string>pscoverdl</string>
+            <key>CFBundleExecutable</key>
+            <string>pscoverdl</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.pscoverdl.app</string>
+            <key>CFBundleVersion</key>
+            <string>1.0</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+          </dict>
+          </plist>
+          PLIST
+            echo ".app bundle created manually"
+          else
+            echo ".app bundle found at dist/pscoverdl.app"
+          fi
 
       # -----------------------------------------------------------------------
       # Linux build
