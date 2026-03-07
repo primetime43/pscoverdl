@@ -1,4 +1,4 @@
-# PSCoverDL
+<img width="1124" height="980" alt="image" src="https://github.com/user-attachments/assets/65219b19-ce16-4662-887e-44a5d3274cbd" /># PSCoverDL
 
 ![image](https://github.com/xlenore/pscoverdl/assets/57191159/4c4b3042-85e4-45b5-8f1b-48a6f00a93ea)
 
@@ -16,6 +16,13 @@
 - Select the "gamelist.cache" file (pcsx2/cache).
 - Choose your desired cover type.
 - Press the start download button.
+
+### Mac OS and Linux support now available 
+<img width="1124" height="980" alt="image" src="https://github.com/user-attachments/assets/72f8130f-fddd-4b2d-a571-5a3dee8b1eb3" />
+
+- MacOS tested and fully functioning
+- Linux requires testing
+- Credit @alexauga
 
 ### Credits
 - [PCSX2](https://github.com/PCSX2/pcsx2 "PCSX2") and [Duckstation](https://github.com/stenzek/duckstation "Dckstation") and **everyone** involved in compiling all the titles into a [database](https://github.com/xlenore/pscoverdl/tree/main/src/resources "database").
