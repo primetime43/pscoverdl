@@ -170,15 +170,23 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Upload artifacts.
-      # macOS: only the .app bundle — users drag this to /Applications.
+      # macOS: zip the .app first so upload-artifact preserves bundle structure.
+      #        (upload-artifact v4 walks into a directory path, flattening .app)
       # Windows/Linux: the full onedir folder.
       # -----------------------------------------------------------------------
-      - name: Upload artifact (macOS — .app only)
+      - name: Zip .app bundle (macOS)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          cd dist
+          zip -r pscoverdl-macos.zip pscoverdl.app
+
+      - name: Upload artifact (macOS — zipped .app)
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: dist/pscoverdl.app
+          path: dist/pscoverdl-macos.zip
           if-no-files-found: error
 
       - name: Upload artifact (Windows / Linux)
