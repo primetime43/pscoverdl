@@ -482,7 +482,7 @@ class pscoverdl_gui(ctk.CTk):
         def _fetch():
             try:
                 rep_version_str = requests.get(
-                    "https://github.com/primetime43/pscoverdl/raw/main/VERSION",
+                    "https://github.com/xlenore/pscoverdl/raw/main/VERSION",
                     timeout=5,
                     verify=certifi.where(),
                 ).text.strip()
