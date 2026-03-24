@@ -7,6 +7,7 @@ from termcolor import colored
 from tqdm import tqdm
 from pathlib import Path
 import requests
+import certifi
 
 PS1_COVERS_URL_DEFAULT = (
     "https://raw.githubusercontent.com/xlenore/psx-covers/main/covers/default"
@@ -68,7 +69,7 @@ class BaseCoverDownloader:
         try:
             if not self.use_ssl:
                 url = url.replace("https://", "http://")
-            response = requests.get(url)
+            response = requests.get(url, verify=certifi.where())
             if response.status_code == 200:
                 with open(cover_path, "wb") as file:
                     file.write(response.content)
@@ -92,7 +93,8 @@ class BaseCoverDownloader:
             covers_url_default = PS1_COVERS_URL_DEFAULT
             covers_url_3d = PS1_COVERS_URL_3D
         else:
-            print(colored(f"[ERROR]: Invalid emulator: {self.emulator}", "red"))
+            print(
+                colored(f"[ERROR]: Invalid emulator: {self.emulator}", "red"))
             return
 
         covers_url = covers_url_default
@@ -113,7 +115,8 @@ class BaseCoverDownloader:
             ]
 
         if not serial_list:
-            print(colored(f"[LOG]: All covers have already been downloaded", "green"))
+            print(
+                colored(f"[LOG]: All covers have already been downloaded", "green"))
             return
 
         workers = 4
@@ -121,7 +124,8 @@ class BaseCoverDownloader:
             results = []
             for url in cover_urls:
                 cover_path = self.cover_dir.joinpath(Path(url).name)
-                results.append(executor.submit(self.download_cover, url, cover_path))
+                results.append(executor.submit(
+                    self.download_cover, url, cover_path))
 
             failed = []
             for result, url in tqdm(
@@ -136,7 +140,8 @@ class BaseCoverDownloader:
                 game_name = self.serial_to_name(name_list, game_serial)
 
                 if result.result():
-                    tqdm.write(colored(f"{game_serial} | {game_name}", "green"))
+                    tqdm.write(
+                        colored(f"{game_serial} | {game_name}", "green"))
                 else:
                     failed.append((game_serial, game_name))
 
@@ -188,7 +193,8 @@ class PCSX2CoverDownloader(BaseCoverDownloader):
         name_list = {}
 
         gameindex_file = (
-            Path(__file__).resolve().parent.joinpath("resources", "GameIndex.yaml")
+            Path(__file__).resolve().parent.joinpath(
+                "resources", "GameIndex.yaml")
         )
 
         if not gameindex_file.exists():
@@ -211,7 +217,8 @@ class DuckStationCoverDownloader(BaseCoverDownloader):
         name_list = {}
 
         gamedb_file = (
-            Path(__file__).resolve().parent.joinpath("resources", "gamedb.json")
+            Path(__file__).resolve().parent.joinpath(
+                "resources", "gamedb.json")
         )
 
         if not gamedb_file.exists():

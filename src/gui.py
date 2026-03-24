@@ -16,40 +16,81 @@
     NO COVERS?
 """
 
+import sys
+import threading
 import customtkinter as ctk
 from tkinter import filedialog
 import tkinter as tk
 import os
+from pathlib import Path
 from PIL import Image, ImageTk
 import configparser
 import pscoverdl
 import requests
+import certifi
 
 VERSION = 1.3
+
+# Cross-platform font: MS Sans Serif only exists on Windows
+if sys.platform == "win32":
+    APP_FONT = ("MS Sans Serif", 12, "bold")
+else:
+    APP_FONT = ("Helvetica", 12, "bold")
+
+
+def get_config_path() -> Path:
+    """
+    Return a platform-appropriate path for pscoverdl.ini.
+
+    - Windows : %APPDATA%\\pscoverdl\\pscoverdl.ini
+    - macOS   : ~/Library/Application Support/pscoverdl/pscoverdl.ini
+    - Linux   : $XDG_CONFIG_HOME/pscoverdl/pscoverdl.ini  (default ~/.config)
+    """
+    if sys.platform == "win32":
+        base = Path(os.environ.get("APPDATA", Path.home()))
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support"
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+
+    config_dir = base / "pscoverdl"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    return config_dir / "pscoverdl.ini"
 
 
 class pscoverdl_gui(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.check_updates(VERSION)
-        icon_path = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "app/icon.ico"
-        )
-        icon_photo = ImageTk.PhotoImage(Image.open(icon_path))
-        self.wm_iconphoto(True, icon_photo)
+
+        # --- Cross-platform icon loading ---
+        # .ico is Windows-only. Use .png on macOS/Linux.
+        icon_dir = os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), "app")
+        if sys.platform == "win32":
+            icon_file = os.path.join(icon_dir, "icon.ico")
+        else:
+            icon_file = os.path.join(icon_dir, "icon.png")
+
+        if os.path.isfile(icon_file):
+            icon_photo = ImageTk.PhotoImage(Image.open(icon_file))
+            self.wm_iconphoto(True, icon_photo)
+
         self.geometry("450x400")
         self.resizable(False, False)
-        self.font = ("MS Sans Serif", 12, "bold")
+        self.font = APP_FONT
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
-        image_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "icons")
+        # --- Phase 1 Fix: use os.path.join consistently for image paths ---
+        image_path = os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), "icons")
 
         self.ps1_image = ctk.CTkImage(
-            Image.open(image_path + "/ps1.png"), size=(20, 20)
+            Image.open(os.path.join(image_path, "ps1.png")), size=(20, 20)
         )
         self.ps2_image = ctk.CTkImage(
-            Image.open(image_path + "/ps2.png"), size=(20, 20)
+            Image.open(os.path.join(image_path, "ps2.png")), size=(20, 20)
         )
 
         # region nav frame
@@ -186,7 +227,8 @@ class pscoverdl_gui(ctk.CTk):
         # endregion
 
         # region pcsx2 frame
-        self.pcsx2_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
+        self.pcsx2_frame = ctk.CTkFrame(
+            self, corner_radius=0, fg_color="transparent")
 
         # pcsx2 covers Dir textbox
         self.pcsx2_covers_directory_textbox = ctk.CTkEntry(
@@ -211,7 +253,8 @@ class pscoverdl_gui(ctk.CTk):
         self.pcsx2_gamecache_textbox = ctk.CTkEntry(
             self.pcsx2_frame, placeholder_text="Game Cache", width=200
         )
-        self.pcsx2_gamecache_textbox.grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        self.pcsx2_gamecache_textbox.grid(
+            row=1, column=0, padx=10, pady=10, sticky="w")
 
         # pcsx2 browser button
         self.pcsx2_gamecache_button = ctk.CTkButton(
@@ -220,7 +263,8 @@ class pscoverdl_gui(ctk.CTk):
             command=lambda: self.select_directory("pcsx2", True),
             width=10,
         )
-        self.pcsx2_gamecache_button.grid(row=1, column=1, padx=5, pady=5, sticky="e")
+        self.pcsx2_gamecache_button.grid(
+            row=1, column=1, padx=5, pady=5, sticky="e")
 
         self.pcsx2_cover_type_var = tk.IntVar(value=0)
 
@@ -228,7 +272,8 @@ class pscoverdl_gui(ctk.CTk):
         self.pcsx2_label_radio_group = ctk.CTkLabel(
             master=self.pcsx2_frame, text="Cover Type:"
         )
-        self.pcsx2_label_radio_group.grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        self.pcsx2_label_radio_group.grid(
+            row=2, column=0, padx=10, pady=10, sticky="w")
 
         self.pcsx2_radio_button_1 = ctk.CTkRadioButton(
             master=self.pcsx2_frame,
@@ -236,7 +281,8 @@ class pscoverdl_gui(ctk.CTk):
             variable=self.pcsx2_cover_type_var,
             value=0
         )
-        self.pcsx2_radio_button_1.grid(row=3, column=0, pady=10, padx=20, sticky="w")
+        self.pcsx2_radio_button_1.grid(
+            row=3, column=0, pady=10, padx=20, sticky="w")
 
         self.pcsx2_radio_button_2 = ctk.CTkRadioButton(
             master=self.pcsx2_frame,
@@ -244,17 +290,17 @@ class pscoverdl_gui(ctk.CTk):
             variable=self.pcsx2_cover_type_var,
             value=1
         )
-        self.pcsx2_radio_button_2.grid(row=4, column=0, pady=10, padx=20, sticky="w")
+        self.pcsx2_radio_button_2.grid(
+            row=4, column=0, pady=10, padx=20, sticky="w")
 
         # pcsx2 use_ssl button
         self.pcsx2_use_ssl_checkbox = ctk.CTkCheckBox(self.pcsx2_frame, text="Use SSL")
         self.pcsx2_use_ssl_checkbox.grid(row=5, column=0, padx=10, pady=10, sticky="w")
-        
+
         self.pcsx2_fallback_checkbox = ctk.CTkCheckBox(
             self.pcsx2_frame, text="Fallback to other cover type if not found"
         )
         self.pcsx2_fallback_checkbox.grid(row=6, column=0, columnspan=2, padx=10, pady=10, sticky="w")
-
 
         # pcsx2 download button
         self.start_download_button = ctk.CTkButton(
@@ -275,7 +321,8 @@ class pscoverdl_gui(ctk.CTk):
             else "transparent"
         )
         self.pcsx2.configure(
-            fg_color=("gray75", "gray25") if name == "pcsx2_frame" else "transparent"
+            fg_color=(
+                "gray75", "gray25") if name == "pcsx2_frame" else "transparent"
         )
 
         # show selected frame
@@ -316,10 +363,11 @@ class pscoverdl_gui(ctk.CTk):
                 self.duckstation_covers_directory_textbox.insert(0, file_path)
 
     def load_configurations(self):
-        if os.path.isfile("pscoverdl.ini"):
+        config_path = get_config_path()
+        if config_path.is_file():
             try:
                 config = configparser.ConfigParser()
-                config.read("pscoverdl.ini")
+                config.read(config_path)
 
                 duckstation_covers_dir = config.get("Duckstation", "cover_directory")
                 duckstation_game_cache = config.get("Duckstation", "game_cache")
@@ -336,7 +384,8 @@ class pscoverdl_gui(ctk.CTk):
                 self.duckstation_covers_directory_textbox.insert(
                     0, duckstation_covers_dir
                 )
-                self.duckstation_gamecache_textbox.insert(0, duckstation_game_cache)
+                self.duckstation_gamecache_textbox.insert(
+                    0, duckstation_game_cache)
                 self.duckstation_cover_type_var.set(duckstation_cover_type)
 
                 if duckstation_use_ssl:
@@ -380,14 +429,13 @@ class pscoverdl_gui(ctk.CTk):
             "fallback": str(self.pcsx2_fallback_checkbox.get())
         }
 
-        with open("pscoverdl.ini", "w") as configfile:
+        with open(get_config_path(), "w") as configfile:
             config.write(configfile)
 
     def start_download(self, emulator: str):
-        self.start_download_button.configure(state="disabled")
-
+        # Collect args before entering the thread (must read Tkinter widgets on main thread)
         if emulator == "pcsx2":
-            pscoverdl.download_covers(
+            args = (
                 self.pcsx2_covers_directory_textbox.get(),
                 self.pcsx2_gamecache_textbox.get(),
                 self.pcsx2_cover_type_var.get(),
@@ -396,7 +444,7 @@ class pscoverdl_gui(ctk.CTk):
                 self.pcsx2_fallback_checkbox.get()
             )
         elif emulator == "duckstation":
-            pscoverdl.download_covers(
+            args = (
                 self.duckstation_covers_directory_textbox.get(),
                 self.duckstation_gamecache_textbox.get(),
                 self.duckstation_cover_type_var.get(),
@@ -404,28 +452,58 @@ class pscoverdl_gui(ctk.CTk):
                 emulator,
                 self.duckstation_fallback_checkbox.get()
             )
+        else:
+            return
 
+        # Disable both download buttons while running
+        self._set_download_buttons_state("disabled")
+
+        def _run():
+            pscoverdl.download_covers(*args)
+            # Schedule UI updates back on the main thread via after()
+            self.after(0, self._on_download_complete)
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _on_download_complete(self):
+        """Called on the main thread when the background download finishes."""
         self.save_configurations()
-        self.start_download_button.configure(state="normal")
+        self._set_download_buttons_state("normal")
 
-    def check_updates(self, version: str):
-        try:
-            rep_version = requests.get(
-                "https://github.com/primetime43/pscoverdl/raw/main/VERSION"
-            ).text.strip()
+    def _set_download_buttons_state(self, state: str):
+        """Enable or disable both emulator download buttons at once."""
+        for frame in (self.duckstation_frame, self.pcsx2_frame):
+            for widget in frame.winfo_children():
+                if isinstance(widget, ctk.CTkButton) and widget.cget("text") == "Start Download":
+                    widget.configure(state=state)
 
+    def check_updates(self, version: float):
+        """Fetch the latest version number in a background thread to avoid blocking startup."""
+        def _fetch():
             try:
-                rep_version = float(rep_version)
-            except ValueError:
+                rep_version_str = requests.get(
+                    "https://github.com/primetime43/pscoverdl/raw/main/VERSION",
+                    timeout=5,
+                    verify=certifi.where(),
+                ).text.strip()
+                try:
+                    rep_version = float(rep_version_str)
+                except ValueError:
+                    rep_version = version
+            except requests.exceptions.RequestException:
                 rep_version = version
 
-        except requests.exceptions.RequestException:
-            rep_version = version
+            new_title = (
+                f"PSCoverDL - {version}"
+                f"{' | NEW VERSION AVAILABLE' if version != rep_version else ''}"
+            )
+            self.after(0, lambda: self.title(new_title))
 
-        self.title(
-            f"PSCoverDL - {version}{' | NEW VERSION AVAILABLE' if version != rep_version else ''}"
-        )
-    
+        # Set a neutral title immediately, then update it when the request completes
+        self.title(f"PSCoverDL - {version}")
+        threading.Thread(target=_fetch, daemon=True).start()
+
+
 if __name__ == "__main__":
     app = pscoverdl_gui()
     app.mainloop()
