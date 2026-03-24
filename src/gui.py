@@ -29,7 +29,7 @@ import pscoverdl
 import requests
 import certifi
 
-VERSION = 1.3
+VERSION = 1.1
 
 # Cross-platform font: MS Sans Serif only exists on Windows
 if sys.platform == "win32":
